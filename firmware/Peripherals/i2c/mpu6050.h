@@ -1,3 +1,5 @@
+#ifndef MPU6050_H
+#define MPU6050_H
 #include "stm32f4xx_hal.h"
 #define MPU6050_ADDR 0x68
 #define MPU6050_PWR_MGMT_1 0x6B
@@ -15,3 +17,4 @@ HAL_StatusTypeDef MPU6050_ReadAccel(I2C_HandleTypeDef *hi2c, int16_t *x, int16_t
 HAL_StatusTypeDef MPU6050_ReadGYRO(I2C_HandleTypeDef *hi2c, int16_t *x, int16_t *y, int16_t *z);
 
 
+#endif
