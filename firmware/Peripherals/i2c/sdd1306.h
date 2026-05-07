@@ -49,5 +49,15 @@
 // comand and data
 #define SSD1306_CMD   0x00
 #define SSD1306_DATA  0x40
+#define SSD1306_NORMAL_DISPLAY    0xA6
+HAL_StatusTypeDef SSD1306_Init(I2C_HandleTypeDef *hi2c);
+
+HAL_StatusTypeDef SSD1306_SendCommand(I2C_HandleTypeDef *hi2c,uint8_t cmd);
+
+HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,uint8_t *data,uint16_t size);
+
+HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c);
+
+HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,char *string);
 
 #endif
