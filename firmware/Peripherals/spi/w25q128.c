@@ -25,9 +25,9 @@ HAL_StatusTypeDef W25Q128_Write(SPI_HandleTypeDef *hspi,uint32_t address,uint8_t
     };
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
     HAL_SPI_Transmit(hspi, meta, 4, 500);
-     HAL_SPI_Transmit(hspi, data, size, 500);
+    HAL_SPI_Transmit(hspi, data, size, 500);
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
-    return HAL_OK;
+    return W25Q128_WaitBusy(hspi);
 }
 
 HAL_StatusTypeDef W25Q128_Read(SPI_HandleTypeDef *hspi, uint32_t address, uint8_t *data, uint16_t size){
@@ -68,13 +68,15 @@ HAL_StatusTypeDef W25Q128_EraseSector(SPI_HandleTypeDef *hspi, uint32_t address)
     return W25Q128_WaitBusy(hspi);
 }
 HAL_StatusTypeDef W25Q128_WaitBusy(SPI_HandleTypeDef *hspi){
+    uint32_t start = HAL_GetTick();
     while(1){
         uint8_t cmd = W25Q128_READ_STAT_REG_1;
         uint8_t buffer;
-        HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET); // CS low
+        HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
         HAL_SPI_Transmit(hspi, &cmd, 1, 500);
         HAL_SPI_Receive(hspi, &buffer, 1, 500);
-        HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);   // CS high
+        HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
         if((buffer & 0x01) == 0) return HAL_OK;
+        if((HAL_GetTick() - start) > 3000) return HAL_TIMEOUT;
     }
 }

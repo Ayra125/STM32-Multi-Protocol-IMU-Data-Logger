@@ -80,6 +80,8 @@ if(SSD1306_SendCommand(hi2c,0x80)!=HAL_OK) return HAL_ERROR;
 if(SSD1306_SendCommand(hi2c,SSD1306_SET_CHARGE_PUMP)!=HAL_OK) return HAL_ERROR;
 if(SSD1306_SendCommand(hi2c,SSD1306_CHARGE_PUMP_ON)!=HAL_OK) return HAL_ERROR;
 if(SSD1306_SendCommand(hi2c,SSD1306_DISP_ON)!=HAL_OK) return HAL_ERROR;
+if(SSD1306_SendCommand(hi2c,SSD1306_MEM_ADDR_MODE)!=HAL_OK) return HAL_ERROR;
+if(SSD1306_SendCommand(hi2c,0x00)!=HAL_OK) return HAL_ERROR;
 return HAL_OK;
 }
 
@@ -90,6 +92,7 @@ HAL_StatusTypeDef SSD1306_SendCommand(I2C_HandleTypeDef *hi2c,uint8_t cmd){
 }
 
 HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,const uint8_t *data,uint16_t size){
+    if (size > 128) return HAL_ERROR;
     uint8_t buff[129];
     buff[0]=SSD1306_DATA;
     memcpy(&buff[1],data,size);
