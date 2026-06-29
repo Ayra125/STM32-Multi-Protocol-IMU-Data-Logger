@@ -38,10 +38,31 @@ tests/
 - Added `Makefile` for firmware build system
 - Fixed `ssd1306.h` filename (was misspelled as `sdd1306.h`)
 
-### Earlier
+### 2026-05-11
+- Added `DEVLOG.md` development log
+
+### 2026-05-09
+- Added W25Q128 datasheet to `docs/datasheets/`
+
+### 2026-05-08
 - Completed W25Q128 SPI flash memory driver
-- Completed SSD1306 OLED display driver (init, clear, draw functions)
+- Completed SSD1306 OLED display driver
+
+### 2026-05-07
+- Implemented SSD1306 clear function
+- Added SSD1306 driver skeleton
+
+### 2026-05-06
+- Added SSD1306 header file
+
+### 2026-05-05
 - Implemented MPU6050 IMU driver over I2C
-- Added SSD1306 driver skeleton and header
-- Added development log (`DEVLOG.md`)
-- Added datasheets for all components
+- Added MPU6050 header file and I2C address defines
+- Added datasheets for SSD1306, MPU6050, and STM32F446RE
+
+### 2026-05-04
+- Added CubeMX generated HAL boilerplate for STM32F446RE
+
+### 2026-04-30
+- Initialized project structure with driver and peripheral directories
+- Added README files for firmware, hardware, and docs directories
