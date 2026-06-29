@@ -10,8 +10,8 @@
 #define W25Q128_POWER_DOWN 0xB9
 #define W25Q128_REL_POWER_DOWN 0xAB
 #define W25Q128_PAGE_PROGRAM 0x02
-#define SPI1_CS_Pin GPIO_PIN_x
-#define SPI1_CS_GPIO_Port GPIOx
+#define SPI1_CS_Pin GPIO_PIN_4
+#define SPI1_CS_GPIO_Port GPIOA
 
 HAL_StatusTypeDef W25Q128_Init(SPI_HandleTypeDef *hspi);
 

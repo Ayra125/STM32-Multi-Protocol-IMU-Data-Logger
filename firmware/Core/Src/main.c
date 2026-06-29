@@ -21,6 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ssd1306.h"
+#include "w25q128.h"
+#include "stm32f4xx_hal.h"
+#include "mpu6050.h"
 
 /* USER CODE END Includes */
 
@@ -98,7 +102,18 @@ int main(void)
   MX_SPI1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+if (MPU6050_Init(&hi2c1) != HAL_OK)
+{
+    // send error over UART
+}
+if (W25Q128_Init(&hspi1) != HAL_OK)
+{
+    // send error over UART
+}
+if (SSD1306_Init(&hi2c1) != HAL_OK)
+{
+    // send error over UART
+}
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -106,7 +121,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

@@ -54,7 +54,7 @@ HAL_StatusTypeDef SSD1306_Init(I2C_HandleTypeDef *hi2c);
 
 HAL_StatusTypeDef SSD1306_SendCommand(I2C_HandleTypeDef *hi2c,uint8_t cmd);
 
-HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,uint8_t *data,uint16_t size);
+HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,const uint8_t *data,uint16_t size);
 
 HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c);
 

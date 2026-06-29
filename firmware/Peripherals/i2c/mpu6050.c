@@ -1,5 +1,5 @@
 #include "stm32f4xx_hal.h"
-#include "MPU6050_H"
+#include "mpu6050.h"
 
 HAL_StatusTypeDef MPU6050_Init(I2C_HandleTypeDef *hi2c){
     uint8_t data[2]={MPU6050_PWR_MGMT_1, 0x00};

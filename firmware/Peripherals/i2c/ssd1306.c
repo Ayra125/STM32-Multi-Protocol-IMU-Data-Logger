@@ -60,7 +60,7 @@ static const uint8_t font[][5] = {
     {0x63, 0x14, 0x08, 0x14, 0x63}, // 88 X
     {0x07, 0x08, 0x70, 0x08, 0x07}, // 89 Y
     {0x61, 0x51, 0x49, 0x45, 0x43}, // 90 Z
-}
+};
 HAL_StatusTypeDef SSD1306_Init(I2C_HandleTypeDef *hi2c){
 if(SSD1306_SendCommand(hi2c,SSD1306_SET_MUX_RATIO)!=HAL_OK) return HAL_ERROR;
 if(SSD1306_SendCommand(hi2c,0x3F)!=HAL_OK) return HAL_ERROR;
@@ -89,7 +89,7 @@ HAL_StatusTypeDef SSD1306_SendCommand(I2C_HandleTypeDef *hi2c,uint8_t cmd){
     return HAL_I2C_Master_Transmit(hi2c, SSD1306_ADDR <<1,data,2,500);
 }
 
-HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,uint8_t *data,uint16_t size){
+HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,const uint8_t *data,uint16_t size){
     uint8_t buff[129];
     buff[0]=SSD1306_DATA;
     memcpy(&buff[1],data,size);
@@ -97,15 +97,17 @@ HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,uint8_t *data,uint16_
 }
 
 HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c){
-    uint8_t zeros[1024];
-    if(SSD1306_SendCommand(hi2c, SSD1306_COL_ADDR)!= HAL_OK) return HAL_ERROR;
-    if(SSD1306_SendCommand(hi2c, 0)!= HAL_OK) return HAL_ERROR;
-    if(SSD1306_SendCommand(hi2c, 127)!= HAL_OK) return HAL_ERROR;
-    if( SSD1306_SendCommand(hi2c, SSD1306_PAGE_ADDR)!= HAL_OK) return HAL_ERROR;
-    if(SSD1306_SendCommand(hi2c, 0)!= HAL_OK) return HAL_ERROR;
-    if(SSD1306_SendCommand(hi2c, 7) != HAL_OK) return HAL_ERROR;  
-    memset(zeros, 0, sizeof(zeros));
-    return SSD1306_SendData(hi2c,zeros,1024);
+    uint8_t zeros[128] = {0};
+    if(SSD1306_SendCommand(hi2c, SSD1306_COL_ADDR) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, 0) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, 127) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, SSD1306_PAGE_ADDR) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, 0) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, 7) != HAL_OK) return HAL_ERROR;
+    for(int i = 0; i < 8; i++){
+        if(SSD1306_SendData(hi2c, zeros, 128) != HAL_OK) return HAL_ERROR;
+    }
+    return HAL_OK;
 }
 
 HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,char *string){
