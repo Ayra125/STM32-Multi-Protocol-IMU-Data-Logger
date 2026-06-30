@@ -37,7 +37,7 @@ C_SRCS = \
 	Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c \
 	Peripherals/i2c/mpu6050.c \
 	Peripherals/i2c/ssd1306.c \
-	Peripherals/spi/w25q128.c
+	Peripherals/spi/w25q128.c\
 
 ASM_SRCS = Core/Startup/startup_stm32f446retx.s
 
@@ -48,7 +48,7 @@ C_INCLUDES = \
 	-IDrivers/STM32F4xx_HAL_Driver/Inc \
 	-IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
 	-IPeripherals/i2c \
-	-IPeripherals/spi
+	-IPeripherals/spi\
 
 CFLAGS  = $(MCU) $(DEFS) $(C_INCLUDES) -O2 -Wall -fdata-sections -ffunction-sections
 ASFLAGS = $(MCU) -x assembler-with-cpp

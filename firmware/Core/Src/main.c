@@ -25,6 +25,7 @@
 #include "w25q128.h"
 #include "stm32f4xx_hal.h"
 #include "mpu6050.h"
+#include <string.h>
 
 /* USER CODE END Includes */
 
@@ -106,16 +107,17 @@ int main(void)
   /* USER CODE BEGIN 2 */
 if (MPU6050_Init(&hi2c1) != HAL_OK)
 {
-    // send error over UART
+    HAL_UART_Transmit(&huart2, (uint8_t*)"MPU6050 Init Failed\r\n", strlen("MPU6050 Init Failed\r\n"), 100);
 }
 if (W25Q128_Init(&hspi1) != HAL_OK)
 {
-    // send error over UART
+    HAL_UART_Transmit(&huart2, (uint8_t*)"W25Q128 Init Failed\r\n", strlen("W25Q128 Init Failed\r\n"), 100);
 }
 if (SSD1306_Init(&hi2c1) != HAL_OK)
 {
-    // send error over UART
+    HAL_UART_Transmit(&huart2, (uint8_t*)"SSD1306 Init Failed\r\n", strlen("SSD1306 Init Failed\r\n"), 100);
 }
+HAL_UART_Transmit(&huart2, (uint8_t*)"All peripherals initialized\r\n", strlen("All peripherals initialized\r\n"), 100);
   /* USER CODE END 2 */
 
   /* Infinite loop */
