@@ -58,6 +58,6 @@ HAL_StatusTypeDef SSD1306_SendData(I2C_HandleTypeDef *hi2c,const uint8_t *data,u
 
 HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c);
 
-HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,char *string);
+HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,const char *string);
 
 #endif

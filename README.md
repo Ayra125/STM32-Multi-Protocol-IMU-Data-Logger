@@ -34,6 +34,25 @@ tests/
 
 ## Changelog
 
+### 2026-06-29 (latest)
+- Fixed `main.c`: SPI1 NSS changed from `SPI_NSS_HARD_OUTPUT` to `SPI_NSS_SOFT` for software-managed CS
+- Fixed `ssd1306.c`: `SSD1306_WriteString` parameter changed to `const char *`
+- Fixed `ssd1306.h`: updated `SSD1306_WriteString` declaration to match
+- Fixed `mpu6050.c`: guard against uninitialized buffer reads on I2C failure in `ReadAccel` and `ReadGYRO`
+- Fixed `ssd1306.c`: `SSD1306_WriteString` syntax error (`char const string` → `const char *string`)
+
+### 2026-06-29
+- Completed Makefile with MCU flags, source files, include paths, and build targets
+- Fixed `mpu6050.c`: wrong include filename (`MPU6050_H` → `mpu6050.h`)
+- Fixed `mpu6050.c`: guard against uninitialized buffer reads on I2C failure in `ReadAccel` and `ReadGYRO`
+- Fixed `ssd1306.c`: missing semicolon on font array, buffer overflow in `SSD1306_Clear`, added size guard to `SSD1306_SendData`
+- Fixed `ssd1306.c`: added horizontal addressing mode to `SSD1306_Init` so clear and write functions work correctly
+- Fixed `ssd1306.h`: added `const` qualifier to `SSD1306_SendData` declaration
+- Fixed `w25q128.h`: replaced placeholder GPIO pin/port values with correct PA4/GPIOA
+- Fixed `w25q128.c`: added 3s timeout to `W25Q128_WaitBusy` to prevent MCU hang
+- Fixed `w25q128.c`: `W25Q128_Write` now waits for flash to finish internal page program
+- Added peripheral init calls for MPU6050, W25Q128, and SSD1306 in `main.c`
+
 ### 2026-06-28
 - Added `Makefile` for firmware build system
 - Fixed `ssd1306.h` filename (was misspelled as `sdd1306.h`)

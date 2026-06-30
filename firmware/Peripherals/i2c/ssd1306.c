@@ -113,7 +113,7 @@ HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c){
     return HAL_OK;
 }
 
-HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,char *string){
+HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,const char *string){
    while(*string != '\0'){
         if(*string < 32 || *string > 90) {
         string++;
