@@ -9,13 +9,13 @@ HAL_StatusTypeDef W25Q128_Init(SPI_HandleTypeDef *hspi){
     HAL_Delay(1);
 
     cmd = W25Q128_JEDEC_ID;
-    uint8_t id[3] = {0};
+    uint8_t id = 0;
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_RESET);
     HAL_SPI_Transmit(hspi, &cmd, 1, 500);
-    HAL_SPI_Receive(hspi, id, 3, 500);
+    HAL_SPI_Receive(hspi, &id, 1, 500);
     HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, GPIO_PIN_SET);
 
-    if(id[0] != W25Q128_MFR_ID || id[1] != W25Q128_MEM_TYPE || id[2] != W25Q128_CAPACITY)
+    if(id != W25Q128_MFR_ID)
         return HAL_ERROR;
 
     return HAL_OK;
