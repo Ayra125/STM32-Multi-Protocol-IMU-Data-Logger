@@ -34,7 +34,11 @@ tests/
 
 ## Changelog
 
-### 2026-06-29 (latest)
+### 2026-06-30 (latest)
+- Added JEDEC ID verification to `W25Q128_Init`: sends `0x9F`, reads manufacturer byte, returns `HAL_ERROR` if not `0xEF`
+- Removed `uart.c` / `uart.h` wrapper driver; replaced `UART_Print` calls in `main.c` with direct `HAL_UART_Transmit`
+
+### 2026-06-29
 - Fixed `main.c`: SPI1 NSS changed from `SPI_NSS_HARD_OUTPUT` to `SPI_NSS_SOFT` for software-managed CS
 - Fixed `ssd1306.c`: `SSD1306_WriteString` parameter changed to `const char *`
 - Fixed `ssd1306.h`: updated `SSD1306_WriteString` declaration to match
