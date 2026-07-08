@@ -25,6 +25,12 @@ firmware/
 │   ├── i2c/        # MPU6050, SSD1306
 │   └── spi/        # W25Q128
 └── Makefile        # Build system
+hardware/
+├── project/        # Altium project files (.PrjPcb, .SchDoc, .PcbDoc)
+├── libraries/      # Custom Altium parts (tracked in git)
+│   ├── schematic/  # Schematic symbols (.SchLib)
+│   └── footprints/ # PCB footprints (.PcbLib)
+└── output/         # Generated outputs — Gerbers, drill, BOM (gitignored)
 docs/
 ├── datasheets/     # Component datasheets (MPU6050, SSD1306, W25Q128, STM32F446RE)
 └── wiring/         # Wiring diagrams

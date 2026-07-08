@@ -1,3 +1,4 @@
+# Firmware build outputs
 build/
 *.elf
 *.bin
@@ -5,9 +6,41 @@ build/
 *.map
 *.lst
 *.o
+
+# IDE / tool project files
 .vscode/
 *.ioc
 *.uvprojx
 *.ewp
+
+# OS metadata
 .DS_Store
 Thumbs.db
+
+# Altium auto-generated folders
+History/
+__Previews__/
+Project\ Logs\ for\ */
+*_PCBBackup*/
+PreviewCache/
+
+# Altium auto-generated files
+*.PrjPcbStructure
+*.PrjPcbStructure_MDAT
+
+# Altium compiled libraries (binary artefacts; track source .SchLib/.PcbLib instead)
+*.IntLib
+*.Lib
+
+# Altium report / log files
+*.REP
+*.Rpt
+*.rpt
+*.DRR
+*.RUL
+*.APR_LIB
+
+# Altium output files (Gerbers, drill, pick-and-place, BOM)
+# These live under hardware/output/ which is already gitignored by the line below
+hardware/output/*
+!hardware/output/.gitkeep
