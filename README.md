@@ -34,7 +34,48 @@ tests/
 
 ## Changelog
 
-### 2026-06-30 (latest)
+### 2026-07-08 (latest) — Pre-Altium Design Phase
+
+Worked through every schematic decision from first principles before entering Altium. All values are either derived from equations or pulled directly from datasheets and verified against the reasoning, rather than copied from reference designs.
+
+**I2C Trace Width**
+- Ruled out ampacity: I2C open-drain switching currents are sub-mA, far below even minimum-trace limits.
+- Ruled out trace resistance: calculated milliohm resistance is negligible against kΩ-range pull-up resistors and has no meaningful effect on the RC time constant.
+- Confirmed trace capacitance is real but negligible: C = ε₀εᵣA/d, where A = L×W, so wider traces add capacitance — but numerically this is a rounding error against the 400pF budget.
+- Conclusion: width is a manufacturing decision only — set comfortably above the fab minimum for etch-variance margin and hand-inspection ease.
+
+**Trace Length Placeholder**
+- Real lengths depend on Altium placement not yet done; reasoned that clustering I2C1 devices (MPU6050, SSD1306) near the STM32 on a small prototype board justifies a 3–4cm conservative placeholder.
+
+**Bus Capacitance vs. 400pF Ceiling (UM10204 Fast-mode limit)**
+- Looked up MPU6050 real C_IN; used UM10204 per-pin ceiling as stand-in for SSD1306 (datasheet publishes no value).
+- Device capacitance sum ≈ 15pF, leaving ~385pF headroom.
+- Placeholder trace capacitance ≈ 0.11pF (≈0.03% of headroom) — completely negligible.
+- Side-track: traced pin capacitance back to PN junction physics — ESD protection diodes share the conductor/poor-conductor/conductor structure of a parallel-plate capacitor, which is why pin capacitance is a lumped, unpredictable value rather than something derivable from a clean formula.
+
+**Pull-up Resistor Value (R_p)**
+- R_p(max) = t_r / (0.8473 × C_b): slowest allowable resistor, set by the UM10204 rise-time budget (RC charging curve).
+- R_p(min) = (VDD − VOL,max) / I_OL: fastest allowable resistor, set by Ohm's law across the device's internal "on" resistance during low-assertion.
+- Looked up real I_OL for both devices; SSD1306 (100µA) is the weaker sink, so it governs R_p(min) — the shared bus must work regardless of which device is pulling low.
+- Valid range: ~967Ω–17.6kΩ. Chose **1.5kΩ**: USB power removes any power-budget pressure, so leaning toward the fast end makes sense while still keeping healthy margin above R_min.
+
+**W25Q128 SPI Mode**
+- Chip supports Standard/Dual/Quad SPI; STM32F446RE has a separate QUADSPI peripheral capable of it.
+- Chose to stay on standard SPI: the additional peripheral, new pins, different command sequences, and re-testing working Phase 1 firmware cost more than the throughput gain the actual workload would see.
+- IO2(/WP) and IO3(/HOLD): active-low pins, floating inputs are dangerous, so added pull-ups to VCC (not hard-wired) so pins stay inactive but can still be safely overridden.
+
+**STM32 Support Circuitry**
+
+- *Crystal:* I2C and SPI are self-referenced so internal oscillator drift doesn't matter for those peripherals alone, but UART has no shared clock so drift accumulates bit-by-bit across a frame. Since the whole chip shares one clock tree, an accurate external crystal is required. Confirmed **8MHz** HSE with two load capacitors (C_L1/C_L2) to ground and a series R_EXT to limit drive current and protect the crystal from being over-driven.
+- *NRST:* Active-low; idles HIGH via pull-up to VCC, button to GND for manual reset, small capacitor to GND to filter brief noise glitches without blocking a genuine sustained press.
+- *BOOT0:* RM0390 table confirms BOOT0=0 selects Main Flash boot. Chose a **pull-down resistor** to GND (not a hard wire), preserving future flexibility to override via jumper for bootloader access.
+- *Decoupling:* Trace inductance can't respond instantly to fast internal switching current demand, causing local voltage dips; a capacitor close to the pin acts as a local charge reservoir. Values pulled directly from datasheets:
+  - STM32F446RE: 12×100nF + 1×4.7µF across 4 VDD pins; 2×2.2µF at VCAP_1/VCAP_2.
+  - MPU6050: 0.1µF at VDD, 0.1µF at VLOGIC.
+  - SSD1306: charge-pump caps per datasheet typical circuit.
+  - W25Q128: datasheet specifies no value; justified default of **100nF**.
+
+### 2026-06-30
 - Fixed `main.c`: configured PA4 as GPIO push-pull output and drive high on init so W25Q128 CS starts deasserted
 - Fixed `main.c`: `init_ok` flag prevents "All peripherals initialized" from printing if any init failed
 - Fixed `w25q128.c`: added page boundary check to `W25Q128_Write` to prevent silent data corruption
