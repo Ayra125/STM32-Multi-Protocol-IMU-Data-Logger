@@ -124,3 +124,12 @@ HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,const char *string
     }
     return HAL_OK;
 }
+HAL_StatusTypeDef SSD1306_SetCursor(I2C_HandleTypeDef *hi2c, uint8_t page, uint8_t col){
+    if(SSD1306_SendCommand(hi2c, SSD1306_COL_ADDR) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, col) != HAL_OK) return HAL_ERROR;
+     if(SSD1306_SendCommand(hi2c, 127) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, SSD1306_PAGE_ADDR) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c,page) != HAL_OK) return HAL_ERROR;
+    if(SSD1306_SendCommand(hi2c, 7) != HAL_OK) return HAL_ERROR;
+    return HAL_OK;
+}

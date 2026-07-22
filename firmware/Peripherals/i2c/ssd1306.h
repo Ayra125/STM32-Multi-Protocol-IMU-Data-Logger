@@ -60,4 +60,5 @@ HAL_StatusTypeDef SSD1306_Clear(I2C_HandleTypeDef *hi2c);
 
 HAL_StatusTypeDef SSD1306_WriteString(I2C_HandleTypeDef *hi2c,const char *string);
 
+HAL_StatusTypeDef SSD1306_SetCursor(I2C_HandleTypeDef *hi2c, uint8_t page, uint8_t col);
 #endif

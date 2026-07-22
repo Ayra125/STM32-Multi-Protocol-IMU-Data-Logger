@@ -26,6 +26,7 @@
 #include "stm32f4xx_hal.h"
 #include "mpu6050.h"
 #include <string.h>
+#include <stdio.h>
 
 /* USER CODE END Includes */
 
@@ -126,23 +127,37 @@ if (init_ok)
     HAL_UART_Transmit(&huart2, (uint8_t*)"All peripherals initialized\r\n", strlen("All peripherals initialized\r\n"), 100);
 }
   /* USER CODE END 2 */
-
+ 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  int16_t gx, gy, gz, x, y, z;
+  char bufferA[60];
+  char bufferG[60];
   while (1)
   {
-    /* LED
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    HAL_Delay(500);*/
-    
+    HAL_StatusTypeDef accelStatus = MPU6050_ReadAccel(&hi2c1, &x, &y, &z);
+if (accelStatus == HAL_OK) {
+    snprintf(bufferA,sizeof(bufferA),"MPU6050 Read Accel: Ax:%d Ay:%d, Az:%d",x,y,z);
+} else {
+    HAL_UART_Transmit(&huart2, (uint8_t*)"ReadAccel fail\r\n", strlen("ReadAccel fail\r\n"), 100);
+}
+HAL_StatusTypeDef gyroStatus = MPU6050_ReadGYRO(&hi2c1,&gx, &gy, &gz);
+if (gyroStatus == HAL_OK) {
+    snprintf(bufferG,sizeof(bufferG),"MPU6050 Read Gyro: Gx:%d Gy:%d, Gz:%d",gx,gy,gz);
+} else {
+    HAL_UART_Transmit(&huart2, (uint8_t*)"ReadGyro fail\r\n", strlen("ReadGyro fail\r\n"), 100);
+}
+
+
   }
+ 
   /* USER CODE END 3 */
 }
 
-/**
+ /*
   * @brief System Clock Configuration
   * @retval None
-  */
+*/
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
