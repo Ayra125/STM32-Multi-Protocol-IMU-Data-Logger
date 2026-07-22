@@ -25,6 +25,7 @@ hardware/
 │       ├── cpl.xlsx        # JLCPCB component placement list (J1 excluded)
 │       └── SOURCING.md     # R1/R2 substitution + ordering notes
 └── exports/
+    ├── pcb-top.png                # Altium 3D render, top side (Rev 1)
     ├── schematic.pdf              # DRAFT/reference printout (not a clean final export)
     └── cpl-table-screenshot.png   # screenshot of the CPL spreadsheet (not a PCB image)
 ```
@@ -87,6 +88,7 @@ Fabrication, assembly, and hardware bring-up (power-rail, short-circuit, SWD, US
 firmware validation) are the remaining steps. Results will be recorded under `docs/verification/`.
 
 Export work still pending in Altium:
-- Board renders `pcb-top.png`, `pcb-bottom.png`, `pcb-3d.png`.
+- The **bottom-side** board render (`pcb-bottom.png`). The top-side 3D render (`exports/pcb-top.png`)
+  is included.
 - A **clean schematic-only PDF**. The current `exports/schematic.pdf` is a draft/reference only —
   page 2 is clipped, title blocks are incomplete, and the PCB page is small with excess whitespace.

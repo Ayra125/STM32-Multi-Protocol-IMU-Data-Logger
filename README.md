@@ -15,13 +15,12 @@ verification — not just firmware running on a dev board.
 
 ## Board preview
 
-Rendered PCB images are not yet available — `pcb-top.png`, `pcb-bottom.png`, and `pcb-3d.png` still
-need to be exported from Altium and will be added here. For now, the [system architecture](#system-architecture)
-diagram below is the top-level visual, and a **draft** schematic printout is at
-[`hardware/exports/schematic.pdf`](hardware/exports/schematic.pdf) (see its caveats under
-[Known limitations](#known-limitations--revision-2)).
+![Altium 3D render of the Revision 1 board, top side](hardware/exports/pcb-top.png)
 
-<!-- TODO after Altium export: hardware/exports/pcb-top.png, pcb-bottom.png, pcb-3d.png -->
+*Altium 3D render — top side, Revision 1 (silkscreen designators still in cleanup). A bottom-side
+render is still to be exported; see [Known limitations](#known-limitations--revision-2).*
+
+<!-- TODO after Altium export: hardware/exports/pcb-bottom.png + a clean schematic-only PDF -->
 <!-- TODO after fabrication: assembled-board photo + a 20–40s demo GIF (IMU motion -> live OLED
      values -> UART telemetry in a terminal -> logged samples read back from flash) -->
 
@@ -169,7 +168,7 @@ Revision 1 set is committed under `hardware/manufacturing/rev1/`.
 - [`hardware/exports/schematic.pdf`](hardware/exports/schematic.pdf) is a **draft/reference** export,
   not a polished package: page 2 is clipped, title blocks are incomplete, and the PCB page is small
   with excess whitespace. A clean schematic-only PDF export is pending (requires Altium).
-- PCB renders (`pcb-top.png`, `pcb-bottom.png`, `pcb-3d.png`) are not yet exported.
+- The top-side 3D render (`pcb-top.png`) is included; the **bottom-side** render is not yet exported.
 - The `hardware/altium/*.OutJob` uses absolute Windows paths; its source/output paths must be
   reassigned in Altium after cloning (see [`hardware/README.md`](hardware/README.md)).
 
@@ -185,7 +184,7 @@ hardware/
 ├── altium/           # Altium source design (.PrjPcb, .SchDoc, .PcbDoc, .BomDoc, .OutJob, libraries/)
 ├── manufacturing/
 │   └── rev1/         # Reviewed release: gerbers.zip, bom.xlsx, cpl.xlsx
-└── exports/          # schematic.pdf (draft), cpl-table-screenshot.png; PCB renders TODO
+└── exports/          # pcb-top.png (3D render), schematic.pdf (draft); bottom render TODO
 docs/
 ├── datasheets/       # MPU6050, SSD1306, W25Q128, STM32F446RE
 └── wiring/
