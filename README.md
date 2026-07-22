@@ -1,145 +1,210 @@
-# Embedded Communication Protocol Bridge
+# STM32 Multi-Protocol IMU Data Logger
 
-Custom STM32-based embedded system integrating I2C, SPI, and UART peripherals for sensor data acquisition, display, and communication.
+A custom two-layer STM32F446 PCB that samples an IMU over I²C, logs data to SPI flash, displays
+status on an OLED, and streams telemetry through a USB-UART bridge — designed from first principles
+in Altium and taken through schematic, layout, DRC, and a full manufacturing (Gerber/BOM/CPL) review.
 
-## Hardware
+> **Revision 1 status:** Schematic and PCB design are complete. ERC/DRC passed, and the Gerber,
+> drill, BOM, and CPL packages were generated and reviewed for JLCPCB assembly. **Fabrication and
+> electrical bring-up are pending** — the board has not yet been manufactured, assembled, or tested
+> on hardware.
 
-- **MCU:** STM32F446RE (Nucleo-64)
-- **Protocols:** I2C, SPI, UART
+The point of the project is to demonstrate the electrical-level work a breakout module hides —
+component selection, bus loading, pull-up sizing, decoupling, power, PCB layout, and design-rule
+verification — not just firmware running on a dev board.
 
-## Drivers Implemented
+## Board preview
 
-| Peripheral | Protocol | Status |
+![PCB assembly placement preview](hardware/exports/pcb-placement-preview.png)
+
+*JLCPCB placement preview of Revision 1 (top-side assembly).*
+
+<!-- TODO after Altium export: hardware/exports/pcb-top.png, pcb-bottom.png, pcb-3d.png -->
+<!-- TODO after fabrication: assembled-board photo + a 20–40s demo GIF (IMU motion -> live OLED
+     values -> UART telemetry in a terminal -> logged samples read back from flash) -->
+
+## System architecture
+
+```mermaid
+graph LR
+    USBC["USB-C<br/>(TYPE-C-31-M-12)"]
+    LDO["AMS1117-3.3<br/>LDO"]
+    CH340C["CH340C<br/>USB-UART bridge"]
+    MCU["STM32F446RET6<br/>(LQFP-64)"]
+    MPU["MPU-6050<br/>IMU"]
+    OLED["SSD1306<br/>OLED (external)"]
+    FLASH["W25Q128<br/>SPI flash"]
+
+    USBC -->|"5 V"| LDO
+    LDO -->|"3.3 V"| MCU
+    USBC <-->|"USB D+/D-"| CH340C
+    CH340C <-->|"USART2 (PA2/PA3)"| MCU
+    MCU <-->|"I2C1 (PB6/PB7)"| MPU
+    MCU <-->|"I2C1 (shared bus)"| OLED
+    MCU <-->|"SPI1 (PA4-PA7)"| FLASH
+```
+
+- **I2C1** — the MCU reads the MPU-6050 IMU and drives the SSD1306 OLED: two devices sharing one bus
+  (bus loading, shared pull-ups, address arbitration).
+- **SPI1** — the MCU logs data to the W25Q128 flash: a different bus with a different electrical
+  model (push-pull vs. I²C's open-drain).
+- **USART2** — debug/telemetry to a host terminal, carried over USB-C via the CH340C bridge. USB is
+  transport only (like an FTDI cable); USART2 stays the demonstrated protocol.
+
+## What I personally designed
+
+**Authored from scratch:**
+- Full schematic (STM32 support/reset/boot, power tree, USB-C + CH340C, three-peripheral bus design).
+- PCB layout, routing, ground pour, and design-rule setup for JLCPCB 2-layer manufacturing.
+- Custom Altium symbols/footprints where no vendor model existed (USB-C receptacle, CH340C, caps).
+- All three peripheral drivers (`mpu6050`, `ssd1306`, `w25q128`) in C.
+- The engineering calculations below (pull-up sizing, bus capacitance, decoupling, LDO dissipation).
+
+**Generated / vendor-provided (not my work):** STM32 HAL and CMSIS, and the CubeMX-generated
+peripheral init / MSP boilerplate under `firmware/Core/` and `firmware/Drivers/`.
+
+## Hardware specifications
+
+| Function | Part | Bus / Role |
 |---|---|---|
-| MPU6050 (IMU) | I2C | Complete |
-| SSD1306 (OLED Display) | I2C | Complete |
-| W25Q128 (Flash Memory) | SPI | Complete |
+| MCU | STM32F446RET6 (LQFP-64) | — |
+| IMU | MPU-6050 (QFN-24) | **I2C1** |
+| OLED display | SSD1306 (external module, not on PCBA) | **I2C1** (shared bus) |
+| Flash | W25Q128 (SOIC-8) | **SPI1** |
+| USB-UART bridge | CH340C (SOP-16) | **USART2** telemetry to host |
+| Connector | Single USB-C (TYPE-C-31-M-12) | Power-in + UART transport |
+| Regulator | AMS1117-3.3 (SOT-223) | 5 V → 3.3 V |
 
-## Project Structure
+- **Board:** 2-layer FR-4, 1.6 mm, 1 oz copper, ENIG finish, ≈ 46.1 mm × 55.37 mm.
+- **Manufacturing:** JLCPCB SMT assembly (parts chosen JLCPCB-Basic where possible). The reviewed
+  Revision 1 release lives in [`hardware/manufacturing/rev1/`](hardware/manufacturing/rev1).
+- Firmware was developed on a Nucleo-F446RE; the custom board moves to the bare STM32F446RET6.
+
+## Firmware architecture & data flow
+
+Bare-metal STM32 HAL, no RTOS. Each peripheral is an independent driver module:
+
+| Module | File | Bus |
+|---|---|---|
+| MPU-6050 IMU | `firmware/Peripherals/i2c/mpu6050.{c,h}` | I2C1 |
+| SSD1306 OLED | `firmware/Peripherals/i2c/ssd1306.{c,h}` | I2C1 |
+| W25Q128 flash | `firmware/Peripherals/spi/w25q128.{c,h}` | SPI1 |
+
+`main()` configures the clock and peripherals, initializes each device (reporting failures over
+UART), then enters its loop.
+
+**Intended end-to-end data path (not yet implemented):** sample the MPU-6050 at 100 Hz → show the
+latest values on the OLED → append a timestamped record to flash → stream framed telemetry over
+UART. This application loop, and the on-hardware bring-up behind it, are the main open firmware work
+(see [Known limitations](#known-limitations--revision-2)).
+
+## Engineering calculations & trade-offs
+
+A few of the decisions reasoned from datasheets/first principles rather than copied from a reference
+design (full derivations in the design notes):
+
+- **I²C pull-ups (R1/R2):** from UM10204, `Rp(max) = tr / (0.8473 · Cb)` and
+  `Rp(min) = (VDD − VOL) / IOL` give a valid window of **≈ 967 Ω – 17.6 kΩ**. Chose **2.2 kΩ** — well
+  inside the window and available as a JLCPCB **Basic** 0402 part (`C25879`).
+- **Bus capacitance:** device pin capacitance (~10 pF each) + trace capacitance (~0.11 pF, negligible)
+  ≈ 20 pF, only ~5 % of the 400 pF Fast-mode budget — ample rise-time margin on the shared bus.
+- **Decoupling:** values taken directly from each datasheet (STM32 per-pin 100 nF + 4.7 µF bulk +
+  VCAP; MPU-6050 REGOUT/VDD/VLOGIC/CPOUT; flash 100 nF).
+- **Power:** AMS1117-3.3 LDO, 22 µF Cin/Cout per its datasheet; worst-case ≈ 0.5 W on SOT-223 — fine
+  with modest copper pour, no heatsink.
+- **USB transport:** chose a discrete **CH340C** USB-UART bridge over native STM32 USB, so USART2
+  stays the demonstrated protocol (no USB device stack) and the HSE crystal becomes optional. A
+  single **USB-C** connector handles both power and UART; the earlier dual-port VBUS ORing scheme was
+  dropped as unnecessary.
+
+## Build & reproduce
+
+**Firmware:**
+```bash
+cd firmware
+make            # builds with arm-none-eabi-gcc; outputs under build/ (gitignored)
+```
+
+**Hardware:** open `hardware/altium/IMU sensor node hardware.PrjPcb` in Altium Designer. Manufacturing
+outputs are regenerated from the project's OutJob (`IMU sensor node hardware.OutJob`); the reviewed
+Revision 1 set is committed under `hardware/manufacturing/rev1/`.
+
+## Verification results
+
+- **Design verification (done):** schematic ERC clean; PCB DRC clean (with ShortCircuit and
+  Board-Outline-clearance rules enabled); schematic-to-PCB comparison reviewed; JLCPCB matched all
+  assembled BOM line items and previewed placement.
+- **Hardware verification (pending):** power-rail, short-circuit, SWD, USB-UART, I²C, SPI, and
+  firmware bring-up will be recorded after fabrication — planned under `docs/verification/` (logic-
+  analyzer captures, measured I²C rise time vs. the calculated limit, SPI mode/clock, flash
+  read/write/erase, power-rail measurements).
+
+## Known limitations & Revision 2
+
+**Hardware:** not yet fabricated, assembled, or electrically tested. The MPU-6050 is obsolete
+(retained for Rev 1 because it's still JLCPCB-stocked) — migrate to a current IMU in Rev 2. The
+1×5 SWD header (J1) is excluded from PCBA and hand-soldered.
+
+**Firmware (open items before it can be called validated):**
+- The main loop is empty — the end-to-end sample→display→log→stream application is not implemented yet.
+- `SystemClock_Config()` currently runs the core from the **16 MHz HSI with no PLL**, not the 180 MHz
+  the dev log mentions; the PLL config needs to be added.
+- **PA4 chip-select conflict:** the SPI1 MSP configures PA4 as `GPIO_AF5_SPI1` (hardware NSS) after
+  `MX_GPIO_Init` set it as a GPIO output, so the flash driver's software CS (`HAL_GPIO_WritePin`)
+  can't drive it. PA4 needs to stay a plain GPIO output.
+- Several flash SPI transfers don't check `HAL_SPI_Transmit/Receive` return codes.
+- `W25Q128_Init` verifies only the JEDEC manufacturer byte — check the full ID.
+- The CubeMX `.ioc` is not committed (currently gitignored), so the pin/clock config isn't reproducible.
+
+## Repository structure
 
 ```
 firmware/
-├── Core/           # STM32 HAL core (main, startup, system files)
-├── Drivers/        # STM32 HAL & CMSIS drivers
-├── Peripherals/    # Custom peripheral drivers
-│   ├── i2c/        # MPU6050, SSD1306
-│   └── spi/        # W25Q128
-└── Makefile        # Build system
+├── Core/             # CubeMX-generated HAL core (main, clock, MSP, startup)
+├── Drivers/          # STM32 HAL & CMSIS
+├── Peripherals/      # Authored drivers — i2c/ (MPU6050, SSD1306), spi/ (W25Q128)
+└── Makefile
 hardware/
-├── project/        # Altium project files (.PrjPcb, .SchDoc, .PcbDoc)
-├── libraries/      # Custom Altium parts (tracked in git)
-│   ├── schematic/  # Schematic symbols (.SchLib)
-│   └── footprints/ # PCB footprints (.PcbLib)
-└── output/         # Generated outputs — Gerbers, drill, BOM (gitignored)
+├── altium/           # Altium source design (.PrjPcb, .SchDoc, .PcbDoc, .BomDoc, .OutJob, libraries/)
+├── manufacturing/
+│   └── rev1/         # Reviewed release: gerbers.zip, bom.xlsx, cpl.xlsx
+└── exports/          # schematic.pdf, PCB placement preview (renders TODO)
 docs/
-├── datasheets/     # Component datasheets (MPU6050, SSD1306, W25Q128, STM32F446RE)
-└── wiring/         # Wiring diagrams
+├── datasheets/       # MPU6050, SSD1306, W25Q128, STM32F446RE
+└── wiring/
 tests/
-└── loopback/       # Protocol loopback tests
+└── loopback/         # Protocol loopback tests
 ```
+
+## License
+
+MIT — see the follow-up `LICENSE` file for the authored firmware, hardware design, and drivers.
+STM32 HAL/CMSIS retain their original STMicroelectronics licenses.
 
 ## Changelog
 
-### 2026-07-08 (latest) — Pre-Altium Design Phase
+### 2026-07-21 — Revision 1 manufacturing-ready
 
-Worked through every schematic decision from first principles before entering Altium. All values are either derived from equations or pulled directly from datasheets and verified against the reasoning, rather than copied from reference designs.
+- Altium design finalized: ERC/DRC clean, Gerbers (corrected key-shaped outline), drill, BOM, and CPL
+  generated and reviewed in JLCPCB; placement previewed. Board ≈ 46.1 × 55.37 mm, 2-layer, ENIG.
+- MPU-6050 exposed-pad footprint corrected (no paste/routing/vias beneath the die pad; continuous
+  bottom GND plane kept for shielding).
+- Power/UART path finalized: single USB-C, CH340C USB-UART bridge on USART2 (3.3 V, no level shift),
+  AMS1117-3.3 LDO. HSE crystal made optional.
+- I²C pull-ups set to 2.2 kΩ (`C25879`, JLCPCB Basic).
+- JLCPCB quote $185.35; order deferred for budget. J1 excluded from PCBA (hand-soldered).
+- Repository: imported the Altium project and published the reviewed Rev 1 manufacturing release
+  under `hardware/`.
 
-**I2C Trace Width**
-- Ruled out ampacity: I2C open-drain switching currents are sub-mA, far below even minimum-trace limits.
-- Ruled out trace resistance: calculated milliohm resistance is negligible against kΩ-range pull-up resistors and has no meaningful effect on the RC time constant.
-- Confirmed trace capacitance is real but negligible: C = ε₀εᵣA/d, where A = L×W, so wider traces add capacitance — but numerically this is a rounding error against the 400pF budget.
-- Conclusion: width is a manufacturing decision only — set comfortably above the fab minimum for etch-variance margin and hand-inspection ease.
+### 2026-07-08 — Pre-Altium design phase
 
-**Trace Length Placeholder**
-- Real lengths depend on Altium placement not yet done; reasoned that clustering I2C1 devices (MPU6050, SSD1306) near the STM32 on a small prototype board justifies a 3–4cm conservative placeholder.
+Worked through every schematic decision from first principles before entering Altium — I²C trace
+width, bus capacitance vs. the 400 pF ceiling, pull-up sizing, W25Q128 SPI mode, and the STM32
+crystal/reset/boot/decoupling support circuitry. (The 1.5 kΩ pull-up chosen here was later revised to
+2.2 kΩ for JLCPCB Basic-tier sourcing.)
 
-**Bus Capacitance vs. 400pF Ceiling (UM10204 Fast-mode limit)**
-- Looked up MPU6050 real C_IN; used UM10204 per-pin ceiling as stand-in for SSD1306 (datasheet publishes no value).
-- Device capacitance sum ≈ 15pF, leaving ~385pF headroom.
-- Placeholder trace capacitance ≈ 0.11pF (≈0.03% of headroom) — completely negligible.
-- Side-track: traced pin capacitance back to PN junction physics — ESD protection diodes share the conductor/poor-conductor/conductor structure of a parallel-plate capacitor, which is why pin capacitance is a lumped, unpredictable value rather than something derivable from a clean formula.
+### 2026-04-30 – 2026-06-30 — Firmware drivers
 
-**Pull-up Resistor Value (R_p)**
-- R_p(max) = t_r / (0.8473 × C_b): slowest allowable resistor, set by the UM10204 rise-time budget (RC charging curve).
-- R_p(min) = (VDD − VOL,max) / I_OL: fastest allowable resistor, set by Ohm's law across the device's internal "on" resistance during low-assertion.
-- Looked up real I_OL for both devices; SSD1306 (100µA) is the weaker sink, so it governs R_p(min) — the shared bus must work regardless of which device is pulling low.
-- Valid range: ~967Ω–17.6kΩ. Chose **1.5kΩ**: USB power removes any power-budget pressure, so leaning toward the fast end makes sense while still keeping healthy margin above R_min.
-
-**W25Q128 SPI Mode**
-- Chip supports Standard/Dual/Quad SPI; STM32F446RE has a separate QUADSPI peripheral capable of it.
-- Chose to stay on standard SPI: the additional peripheral, new pins, different command sequences, and re-testing working Phase 1 firmware cost more than the throughput gain the actual workload would see.
-- IO2(/WP) and IO3(/HOLD): active-low pins, floating inputs are dangerous, so added pull-ups to VCC (not hard-wired) so pins stay inactive but can still be safely overridden.
-
-**STM32 Support Circuitry**
-
-- *Crystal:* I2C and SPI are self-referenced so internal oscillator drift doesn't matter for those peripherals alone, but UART has no shared clock so drift accumulates bit-by-bit across a frame. Since the whole chip shares one clock tree, an accurate external crystal is required. Confirmed **8MHz** HSE with two load capacitors (C_L1/C_L2) to ground and a series R_EXT to limit drive current and protect the crystal from being over-driven.
-- *NRST:* Active-low; idles HIGH via pull-up to VCC, button to GND for manual reset, small capacitor to GND to filter brief noise glitches without blocking a genuine sustained press.
-- *BOOT0:* RM0390 table confirms BOOT0=0 selects Main Flash boot. Chose a **pull-down resistor** to GND (not a hard wire), preserving future flexibility to override via jumper for bootloader access.
-- *Decoupling:* Trace inductance can't respond instantly to fast internal switching current demand, causing local voltage dips; a capacitor close to the pin acts as a local charge reservoir. Values pulled directly from datasheets:
-  - STM32F446RE: 12×100nF + 1×4.7µF across 4 VDD pins; 2×2.2µF at VCAP_1/VCAP_2.
-  - MPU6050: 0.1µF at VDD, 0.1µF at VLOGIC.
-  - SSD1306: charge-pump caps per datasheet typical circuit.
-  - W25Q128: datasheet specifies no value; justified default of **100nF**.
-
-### 2026-06-30
-- Fixed `main.c`: configured PA4 as GPIO push-pull output and drive high on init so W25Q128 CS starts deasserted
-- Fixed `main.c`: `init_ok` flag prevents "All peripherals initialized" from printing if any init failed
-- Fixed `w25q128.c`: added page boundary check to `W25Q128_Write` to prevent silent data corruption
-- Fixed `w25q128.c`: wrapped `HAL_SPI_Transmit` and `HAL_SPI_Receive` in `W25Q128_Read` with error checks and CS high on failure
-- Fixed `w25q128.c`: initialised `buffer` to `0x01` in `W25Q128_WaitBusy` to prevent false ready on SPI failure
-
-### 2026-06-30
-- Added JEDEC ID verification to `W25Q128_Init`: sends `0x9F`, reads manufacturer byte, returns `HAL_ERROR` if not `0xEF`
-- Removed `uart.c` / `uart.h` wrapper driver; replaced `UART_Print` calls in `main.c` with direct `HAL_UART_Transmit`
-
-### 2026-06-29
-- Fixed `main.c`: SPI1 NSS changed from `SPI_NSS_HARD_OUTPUT` to `SPI_NSS_SOFT` for software-managed CS
-- Fixed `ssd1306.c`: `SSD1306_WriteString` parameter changed to `const char *`
-- Fixed `ssd1306.h`: updated `SSD1306_WriteString` declaration to match
-- Fixed `mpu6050.c`: guard against uninitialized buffer reads on I2C failure in `ReadAccel` and `ReadGYRO`
-- Fixed `ssd1306.c`: `SSD1306_WriteString` syntax error (`char const string` → `const char *string`)
-
-### 2026-06-29
-- Completed Makefile with MCU flags, source files, include paths, and build targets
-- Fixed `mpu6050.c`: wrong include filename (`MPU6050_H` → `mpu6050.h`)
-- Fixed `mpu6050.c`: guard against uninitialized buffer reads on I2C failure in `ReadAccel` and `ReadGYRO`
-- Fixed `ssd1306.c`: missing semicolon on font array, buffer overflow in `SSD1306_Clear`, added size guard to `SSD1306_SendData`
-- Fixed `ssd1306.c`: added horizontal addressing mode to `SSD1306_Init` so clear and write functions work correctly
-- Fixed `ssd1306.h`: added `const` qualifier to `SSD1306_SendData` declaration
-- Fixed `w25q128.h`: replaced placeholder GPIO pin/port values with correct PA4/GPIOA
-- Fixed `w25q128.c`: added 3s timeout to `W25Q128_WaitBusy` to prevent MCU hang
-- Fixed `w25q128.c`: `W25Q128_Write` now waits for flash to finish internal page program
-- Added peripheral init calls for MPU6050, W25Q128, and SSD1306 in `main.c`
-
-### 2026-06-28
-- Added `Makefile` for firmware build system
-- Fixed `ssd1306.h` filename (was misspelled as `sdd1306.h`)
-
-### 2026-05-11
-- Added `DEVLOG.md` development log
-
-### 2026-05-09
-- Added W25Q128 datasheet to `docs/datasheets/`
-
-### 2026-05-08
-- Completed W25Q128 SPI flash memory driver
-- Completed SSD1306 OLED display driver
-
-### 2026-05-07
-- Implemented SSD1306 clear function
-- Added SSD1306 driver skeleton
-
-### 2026-05-06
-- Added SSD1306 header file
-
-### 2026-05-05
-- Implemented MPU6050 IMU driver over I2C
-- Added MPU6050 header file and I2C address defines
-- Added datasheets for SSD1306, MPU6050, and STM32F446RE
-
-### 2026-05-04
-- Added CubeMX generated HAL boilerplate for STM32F446RE
-
-### 2026-04-30
-- Initialized project structure with driver and peripheral directories
-- Added README files for firmware, hardware, and docs directories
+MPU-6050 (I²C), SSD1306 (I²C), and W25Q128 (SPI) drivers written and iterated on the Nucleo-F446RE;
+Makefile build system; peripheral init and error reporting in `main.c`. See `DEVLOG.md` for the
+detailed per-commit history.

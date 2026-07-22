@@ -19,8 +19,10 @@ Thumbs.db
 
 # Altium auto-generated folders
 History/
+__Previews/
 __Previews__/
 Project\ Logs\ for\ */
+Project\ Outputs\ for\ */
 *_PCBBackup*/
 PreviewCache/
 
@@ -40,7 +42,7 @@ PreviewCache/
 *.RUL
 *.APR_LIB
 
-# Altium output files (Gerbers, drill, pick-and-place, BOM)
-# These live under hardware/output/ which is already gitignored by the line below
-hardware/output/*
-!hardware/output/.gitkeep
+# Altium CAM / generated intermediates are not tracked. The reviewed, versioned
+# manufacturing release (gerbers/BOM/CPL) lives under hardware/manufacturing/ and
+# board exports under hardware/exports/ — both ARE tracked.
+CAMtastic*.Cam
