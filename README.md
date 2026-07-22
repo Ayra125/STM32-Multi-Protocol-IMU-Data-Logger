@@ -15,9 +15,11 @@ verification — not just firmware running on a dev board.
 
 ## Board preview
 
-![PCB assembly placement preview](hardware/exports/pcb-placement-preview.png)
-
-*JLCPCB placement preview of Revision 1 (top-side assembly).*
+Rendered PCB images are not yet available — `pcb-top.png`, `pcb-bottom.png`, and `pcb-3d.png` still
+need to be exported from Altium and will be added here. For now, the [system architecture](#system-architecture)
+diagram below is the top-level visual, and a **draft** schematic printout is at
+[`hardware/exports/schematic.pdf`](hardware/exports/schematic.pdf) (see its caveats under
+[Known limitations](#known-limitations--revision-2)).
 
 <!-- TODO after Altium export: hardware/exports/pcb-top.png, pcb-bottom.png, pcb-3d.png -->
 <!-- TODO after fabrication: assembled-board photo + a 20–40s demo GIF (IMU motion -> live OLED
@@ -53,12 +55,18 @@ graph LR
 
 ## What I personally designed
 
-**Authored from scratch:**
+**Original design work (mine):**
 - Full schematic (STM32 support/reset/boot, power tree, USB-C + CH340C, three-peripheral bus design).
 - PCB layout, routing, ground pour, and design-rule setup for JLCPCB 2-layer manufacturing.
-- Custom Altium symbols/footprints where no vendor model existed (USB-C receptacle, CH340C, caps).
 - All three peripheral drivers (`mpu6050`, `ssd1306`, `w25q128`) in C.
 - The engineering calculations below (pull-up sizing, bus capacitance, decoupling, LDO dissipation).
+
+**CAD models — hand-built:** the USB-C receptacle symbol + footprint were drawn by hand, because no
+usable vendor model existed for that part.
+
+**CAD models — imported and then validated/adapted:** the CH340C and some capacitor models were
+pulled in via EasyEDA/LCSC and then checked and adjusted for this design (pin mapping, land pattern,
+parameters) rather than authored from scratch.
 
 **Generated / vendor-provided (not my work):** STM32 HAL and CMSIS, and the CubeMX-generated
 peripheral init / MSP boilerplate under `firmware/Core/` and `firmware/Drivers/`.
@@ -110,8 +118,9 @@ design (full derivations in the design notes):
   ≈ 20 pF, only ~5 % of the 400 pF Fast-mode budget — ample rise-time margin on the shared bus.
 - **Decoupling:** values taken directly from each datasheet (STM32 per-pin 100 nF + 4.7 µF bulk +
   VCAP; MPU-6050 REGOUT/VDD/VLOGIC/CPOUT; flash 100 nF).
-- **Power:** AMS1117-3.3 LDO, 22 µF Cin/Cout per its datasheet; worst-case ≈ 0.5 W on SOT-223 — fine
-  with modest copper pour, no heatsink.
+- **Power:** AMS1117-3.3 LDO with a 4.7 µF ceramic input cap (C17) and a 22 µF tantalum output cap
+  (C18, matching the datasheet's output-stability recommendation); worst-case ≈ 0.5 W on SOT-223 —
+  fine with modest copper pour, no heatsink.
 - **USB transport:** chose a discrete **CH340C** USB-UART bridge over native STM32 USB, so USART2
   stays the demonstrated protocol (no USB device stack) and the HSE crystal becomes optional. A
   single **USB-C** connector handles both power and UART; the earlier dual-port VBUS ORing scheme was
@@ -156,6 +165,14 @@ Revision 1 set is committed under `hardware/manufacturing/rev1/`.
 - `W25Q128_Init` verifies only the JEDEC manufacturer byte — check the full ID.
 - The CubeMX `.ioc` is not committed (currently gitignored), so the pin/clock config isn't reproducible.
 
+**Documentation & exports:**
+- [`hardware/exports/schematic.pdf`](hardware/exports/schematic.pdf) is a **draft/reference** export,
+  not a polished package: page 2 is clipped, title blocks are incomplete, and the PCB page is small
+  with excess whitespace. A clean schematic-only PDF export is pending (requires Altium).
+- PCB renders (`pcb-top.png`, `pcb-bottom.png`, `pcb-3d.png`) are not yet exported.
+- The `hardware/altium/*.OutJob` uses absolute Windows paths; its source/output paths must be
+  reassigned in Altium after cloning (see [`hardware/README.md`](hardware/README.md)).
+
 ## Repository structure
 
 ```
@@ -168,7 +185,7 @@ hardware/
 ├── altium/           # Altium source design (.PrjPcb, .SchDoc, .PcbDoc, .BomDoc, .OutJob, libraries/)
 ├── manufacturing/
 │   └── rev1/         # Reviewed release: gerbers.zip, bom.xlsx, cpl.xlsx
-└── exports/          # schematic.pdf, PCB placement preview (renders TODO)
+└── exports/          # schematic.pdf (draft), cpl-table-screenshot.png; PCB renders TODO
 docs/
 ├── datasheets/       # MPU6050, SSD1306, W25Q128, STM32F446RE
 └── wiring/
@@ -178,7 +195,7 @@ tests/
 
 ## License
 
-MIT — see the follow-up `LICENSE` file for the authored firmware, hardware design, and drivers.
+MIT — see [`LICENSE`](LICENSE). Covers the authored firmware drivers and hardware design.
 STM32 HAL/CMSIS retain their original STMicroelectronics licenses.
 
 ## Changelog
