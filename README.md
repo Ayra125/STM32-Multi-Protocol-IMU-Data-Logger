@@ -1,13 +1,16 @@
 # STM32 Multi-Protocol IMU Data Logger
 
-A custom two-layer STM32F446 PCB that samples an IMU over I²C, logs data to SPI flash, displays
-status on an OLED, and streams telemetry through a USB-UART bridge — designed from first principles
-in Altium and taken through schematic, layout, DRC, and a full manufacturing (Gerber/BOM/CPL) review.
+A custom two-layer STM32F446 PCB and firmware architecture for a multi-protocol IMU data logger —
+designed to sample an IMU over I²C, log to SPI flash, drive an OLED, and stream telemetry through a
+USB-UART bridge. The board was designed from first principles in Altium and taken through schematic,
+layout, DRC, and a full manufacturing (Gerber/BOM/CPL) review.
 
-> **Revision 1 status:** Schematic and PCB design are complete. ERC/DRC passed, and the Gerber,
-> drill, BOM, and CPL packages were generated and reviewed for JLCPCB assembly. **Fabrication and
-> electrical bring-up are pending** — the board has not yet been manufactured, assembled, or tested
-> on hardware.
+> **Project status — hardware-design & firmware-architecture prototype.** Revision 1 of the PCB is
+> design-complete and manufacturing-ready (ERC/DRC passed; Gerber/drill/BOM/CPL generated and reviewed
+> for JLCPCB), and the three peripheral drivers are written. However, the board has **not** been
+> fabricated or electrically tested, and the **end-to-end data-logging loop is not yet implemented**.
+> Treat this as a PCB + firmware-architecture prototype, not a validated, running data logger — see
+> [Known limitations](#known-limitations--revision-2).
 
 The point of the project is to demonstrate the electrical-level work a breakout module hides —
 component selection, bus loading, pull-up sizing, decoupling, power, PCB layout, and design-rule
@@ -17,8 +20,7 @@ verification — not just firmware running on a dev board.
 
 ![Altium 3D render of the Revision 1 board, top side](hardware/exports/pcb-top.png)
 
-*Altium 3D render — top side, Revision 1 (silkscreen designators still in cleanup). A bottom-side
-render is still to be exported; see [Known limitations](#known-limitations--revision-2).*
+*Altium 3D render — top side, Revision 1.*
 
 <!-- TODO after Altium export: hardware/exports/pcb-bottom.png + a clean schematic-only PDF -->
 <!-- TODO after fabrication: assembled-board photo + a 20–40s demo GIF (IMU motion -> live OLED
@@ -151,7 +153,9 @@ Revision 1 set is committed under `hardware/manufacturing/rev1/`.
 
 **Hardware:** not yet fabricated, assembled, or electrically tested. The MPU-6050 is obsolete
 (retained for Rev 1 because it's still JLCPCB-stocked) — migrate to a current IMU in Rev 2. The
-1×5 SWD header (J1) is excluded from PCBA and hand-soldered.
+1×5 SWD header (J1) is excluded from PCBA and hand-soldered. Silkscreen designators are still being
+normalized (some unconventional refs — `S`/`M`/`B`/`C` — and `U?` placeholders remain, visible in the
+top render) and will be cleaned up before fabrication.
 
 **Firmware (open items before it can be called validated):**
 - The main loop is empty — the end-to-end sample→display→log→stream application is not implemented yet.
@@ -188,8 +192,6 @@ hardware/
 docs/
 ├── datasheets/       # MPU6050, SSD1306, W25Q128, STM32F446RE
 └── wiring/
-tests/
-└── loopback/         # Protocol loopback tests
 ```
 
 ## License
