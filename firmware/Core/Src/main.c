@@ -122,6 +122,11 @@ if (SSD1306_Init(&hi2c1) != HAL_OK)
     HAL_UART_Transmit(&huart2, (uint8_t*)"SSD1306 Init Failed\r\n", strlen("SSD1306 Init Failed\r\n"), 100);
     init_ok = 0;
 }
+if(W25Q128_EraseSector(&hspi1,0x000000) != HAL_OK){
+
+    HAL_UART_Transmit(&huart2, (uint8_t*)"EraseSector failed\r\n", strlen("EraseSector failed\r\n"), 100);
+    init_ok=0;
+  }
 if (init_ok)
 {
     HAL_UART_Transmit(&huart2, (uint8_t*)"All peripherals initialized\r\n", strlen("All peripherals initialized\r\n"), 100);
@@ -133,22 +138,53 @@ if (init_ok)
   int16_t gx, gy, gz, x, y, z;
   char bufferA[60];
   char bufferG[60];
+  uint32_t nextWriteLog=0;
   while (1)
   {
+    if(nextWriteLog>=4096){
+      HAL_StatusTypeDef EraseSectorA = W25Q128_EraseSector(&hspi1, 0x000000);
+      if(EraseSectorA != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"EraseSectorA failed\r\n", strlen("EraseSectorA failed\r\n"), 100);
+      if(EraseSectorA == HAL_OK)nextWriteLog = 0;
+    }
     HAL_StatusTypeDef accelStatus = MPU6050_ReadAccel(&hi2c1, &x, &y, &z);
-if (accelStatus == HAL_OK) {
+    HAL_StatusTypeDef gyroStatus = MPU6050_ReadGYRO(&hi2c1,&gx, &gy, &gz);
+    HAL_StatusTypeDef clear = SSD1306_Clear(&hi2c1);
+if (accelStatus == HAL_OK && clear == HAL_OK) {
     snprintf(bufferA,sizeof(bufferA),"MPU6050 Read Accel: Ax:%d Ay:%d, Az:%d",x,y,z);
-} else {
-    HAL_UART_Transmit(&huart2, (uint8_t*)"ReadAccel fail\r\n", strlen("ReadAccel fail\r\n"), 100);
-}
-HAL_StatusTypeDef gyroStatus = MPU6050_ReadGYRO(&hi2c1,&gx, &gy, &gz);
-if (gyroStatus == HAL_OK) {
+    HAL_StatusTypeDef SetCursorA = SSD1306_SetCursor(&hi2c1,0,0);
+    HAL_StatusTypeDef WriteStringA = SSD1306_WriteString(&hi2c1,bufferA);
+    if(SetCursorA == HAL_OK && WriteStringA == HAL_OK){
+      HAL_UART_Transmit(&huart2,(uint8_t*)bufferA,strlen(bufferA),100);
+    }
+  if(SetCursorA != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"SetCursorA failed\r\n", strlen("SetCursorA failed\r\n"), 100);
+  if(WriteStringA != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"WriteStringA failed\r\n", strlen("WriteStringA failed\r\n"), 100);
+} 
+if (gyroStatus == HAL_OK && clear == HAL_OK) {
     snprintf(bufferG,sizeof(bufferG),"MPU6050 Read Gyro: Gx:%d Gy:%d, Gz:%d",gx,gy,gz);
-} else {
-    HAL_UART_Transmit(&huart2, (uint8_t*)"ReadGyro fail\r\n", strlen("ReadGyro fail\r\n"), 100);
-}
-
-
+     HAL_StatusTypeDef SetCursorG =  SSD1306_SetCursor(&hi2c1,1,0);
+     HAL_StatusTypeDef WriteStringG = SSD1306_WriteString(&hi2c1,bufferG);
+     if(SetCursorG == HAL_OK && WriteStringG == HAL_OK){
+      HAL_UART_Transmit(&huart2,(uint8_t*)bufferG,strlen(bufferG),100);
+     }
+  if(SetCursorG != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"SetCursorG failed\r\n", strlen("SetCursorG failed\r\n"), 100);
+  if(WriteStringG != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"WriteStringG failed\r\n", strlen("WriteStringG failed\r\n"), 100);
+} 
+  if(accelStatus != HAL_OK)HAL_UART_Transmit(&huart2, (uint8_t*)"ReadAccel fail\r\n", strlen("ReadAccel fail\r\n"), 100);
+  if(gyroStatus != HAL_OK)HAL_UART_Transmit(&huart2, (uint8_t*)"ReadGyro fail\r\n", strlen("ReadGyro fail\r\n"), 100);
+  if (clear != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"Clear failed\r\n", strlen("Clear failed\r\n"), 100);
+   if(accelStatus == HAL_OK && gyroStatus == HAL_OK){
+    int16_t record[6];
+    record[0]=x;
+    record[1]=y;
+    record[2]=z;
+    record[3]=gx;
+    record[4]=gy;
+    record[5]=gz;
+     HAL_StatusTypeDef W25Q128_WriteS =  W25Q128_Write(&hspi1,nextWriteLog,(uint8_t*)record,12);
+    if(W25Q128_WriteS != HAL_OK) HAL_UART_Transmit(&huart2, (uint8_t*)"W25Q128_Write fail\r\n", strlen("W25Q128_Write fail\r\n"), 100);
+    else if(W25Q128_WriteS == HAL_OK) nextWriteLog += 16;
+   } 
+   HAL_Delay(100);
   }
  
   /* USER CODE END 3 */
