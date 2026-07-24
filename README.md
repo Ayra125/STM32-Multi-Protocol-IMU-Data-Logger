@@ -7,10 +7,10 @@ layout, DRC, and a full manufacturing (Gerber/BOM/CPL) review.
 
 > **Project status — hardware-design & firmware-architecture prototype.** Revision 1 of the PCB is
 > design-complete and manufacturing-ready (ERC/DRC passed; Gerber/drill/BOM/CPL generated and reviewed
-> for JLCPCB), and the three peripheral drivers are written. However, the board has **not** been
-> fabricated or electrically tested, and the **end-to-end data-logging loop is not yet implemented**.
-> Treat this as a PCB + firmware-architecture prototype, not a validated, running data logger — see
-> [Known limitations](#known-limitations--revision-2).
+> for JLCPCB), and the three peripheral drivers plus the end-to-end data-logging loop are written.
+> However, the board has **not** been fabricated or electrically tested, and the firmware has **not**
+> yet been compiled or run on hardware. Treat this as a PCB + firmware-architecture prototype, not a
+> validated, running data logger — see [Known limitations](#known-limitations--revision-2).
 
 The point of the project is to demonstrate the electrical-level work a breakout module hides —
 component selection, bus loading, pull-up sizing, decoupling, power, PCB layout, and design-rule
@@ -59,7 +59,7 @@ graph LR
 **Original design work (mine):**
 - Full schematic (STM32 support/reset/boot, power tree, USB-C + CH340C, three-peripheral bus design).
 - PCB layout, routing, ground pour, and design-rule setup for JLCPCB 2-layer manufacturing.
-- All three peripheral drivers (`mpu6050`, `ssd1306`, `w25q128`) in C.
+- All three peripheral drivers (`mpu6050`, `ssd1306`, `w25q128`) and the application data-logging loop in C.
 - The engineering calculations below (pull-up sizing, bus capacitance, decoupling, LDO dissipation).
 
 **CAD models — hand-built:** the USB-C receptacle symbol + footprint were drawn by hand, because no
@@ -102,9 +102,12 @@ Bare-metal STM32 HAL, no RTOS. Each peripheral is an independent driver module:
 `main()` configures the clock and peripherals, initializes each device (reporting failures over
 UART), then enters its loop.
 
-**Intended end-to-end data path (not yet implemented):** sample the MPU-6050 at 100 Hz → show the
-latest values on the OLED → append a timestamped record to flash → stream framed telemetry over
-UART. This application loop, and the on-hardware bring-up behind it, are the main open firmware work
+**End-to-end data path (written, pending hardware bring-up):** each loop pass reads the MPU-6050
+accelerometer and gyroscope over I²C → renders both on the SSD1306 OLED → streams the same values as
+text over UART → appends a 12-byte record (six `int16_t` axes) to the W25Q128 flash, with 16-byte
+alignment (so no page-boundary straddle) and automatic sector-erase wraparound → paced at 10 Hz via
+`HAL_Delay`. Every peripheral call checks its HAL status and reports failures over UART. The loop is
+written but has **not** yet been compiled or run on hardware — bring-up is the main open firmware work
 (see [Known limitations](#known-limitations--revision-2)).
 
 ## Engineering calculations & trade-offs
@@ -158,7 +161,8 @@ normalized (some unconventional refs — `S`/`M`/`B`/`C` — and `U?` placeholde
 top render) and will be cleaned up before fabrication.
 
 **Firmware (open items before it can be called validated):**
-- The main loop is empty — the end-to-end sample→display→log→stream application is not implemented yet.
+- The application loop (sample → OLED → UART → flash log) is written but has **not been compiled or
+  run on hardware** — bring-up and on-target debugging are still pending.
 - `SystemClock_Config()` currently runs the core from the **16 MHz HSI with no PLL**, not the 180 MHz
   the dev log mentions; the PLL config needs to be added.
 - **PA4 chip-select conflict:** the SPI1 MSP configures PA4 as `GPIO_AF5_SPI1` (hardware NSS) after
@@ -200,6 +204,15 @@ MIT — see [`LICENSE`](LICENSE). Covers the authored firmware drivers and hardw
 STM32 HAL/CMSIS retain their original STMicroelectronics licenses.
 
 ## Changelog
+
+### 2026-07-23 — Firmware: end-to-end data-logging loop
+
+Implemented the main application loop in `main.c`: reads MPU-6050 accel + gyro over I²C, renders both
+lines on the SSD1306 (added an `SSD1306_SetCursor` helper for multi-line output), streams the values
+over UART, and logs a 12-byte record per sample to the W25Q128 — with 16-byte page alignment and
+automatic sector-erase wraparound (with the erase status checked before the write pointer resets).
+Every peripheral call is status-checked with UART fault reporting; loop paced at 10 Hz. Written and
+reviewed in source; **not yet compiled or hardware-tested**.
 
 ### 2026-07-21 — Revision 1 manufacturing-ready
 
