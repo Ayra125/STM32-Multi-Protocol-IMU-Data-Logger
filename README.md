@@ -7,10 +7,13 @@ layout, DRC, and a full manufacturing (Gerber/BOM/CPL) review.
 
 > **Project status — hardware-design & firmware-architecture prototype.** Revision 1 of the PCB is
 > design-complete and manufacturing-ready (ERC/DRC passed; Gerber/drill/BOM/CPL generated and reviewed
-> for JLCPCB), and the three peripheral drivers plus the end-to-end data-logging loop are written.
-> However, the board has **not** been fabricated or electrically tested, and the firmware has **not**
-> yet been compiled or run on hardware. Treat this as a PCB + firmware-architecture prototype, not a
-> validated, running data logger — see [Known limitations](#known-limitations--revision-2).
+> for JLCPCB), and the three peripheral drivers plus the end-to-end data-logging loop are written. The
+> firmware **builds clean** (zero warnings) and has been **flashed to a Nucleo-F446RE**, where the main
+> loop, USART2 telemetry (115200), and error-handling paths are confirmed running. However, the custom
+> board has **not** been fabricated or electrically tested, and the sensor/OLED/flash **success paths
+> have not yet been validated with the peripherals wired up**. Treat this as a PCB + firmware-
+> architecture prototype, not a fully validated data logger — see
+> [Known limitations](#known-limitations--revision-2).
 
 The point of the project is to demonstrate the electrical-level work a breakout module hides —
 component selection, bus loading, pull-up sizing, decoupling, power, PCB layout, and design-rule
@@ -102,13 +105,17 @@ Bare-metal STM32 HAL, no RTOS. Each peripheral is an independent driver module:
 `main()` configures the clock and peripherals, initializes each device (reporting failures over
 UART), then enters its loop.
 
-**End-to-end data path (written, pending hardware bring-up):** each loop pass reads the MPU-6050
-accelerometer and gyroscope over I²C → renders both on the SSD1306 OLED → streams the same values as
-text over UART → appends a 12-byte record (six `int16_t` axes) to the W25Q128 flash, with 16-byte
-alignment (so no page-boundary straddle) and automatic sector-erase wraparound → paced at 10 Hz via
-`HAL_Delay`. Every peripheral call checks its HAL status and reports failures over UART. The loop is
-written but has **not** yet been compiled or run on hardware — bring-up is the main open firmware work
-(see [Known limitations](#known-limitations--revision-2)).
+**End-to-end data path:** each loop pass reads the MPU-6050 accelerometer and gyroscope over I²C →
+renders both on the SSD1306 OLED → streams the same values as text over UART → appends a 12-byte record
+(six `int16_t` axes) to the W25Q128 flash, with 16-byte alignment (so no page-boundary straddle) and
+automatic sector-erase wraparound → paced at 10 Hz via `HAL_Delay`. Every peripheral call checks its
+HAL status and reports failures over UART.
+
+The firmware builds clean and runs on a Nucleo-F446RE: with no peripherals attached, the board streams
+the expected `ReadAccel fail / ReadGyro fail / Clear failed` sequence over USART2 at 115200, confirming
+the loop, UART telemetry, and fault-reporting work on hardware. The remaining bring-up is validating
+the **success** paths with the three peripherals wired up (see
+[Known limitations](#known-limitations--revision-2)).
 
 ## Engineering calculations & trade-offs
 
@@ -147,6 +154,10 @@ Revision 1 set is committed under `hardware/manufacturing/rev1/`.
 - **Design verification (done):** schematic ERC clean; PCB DRC clean (with ShortCircuit and
   Board-Outline-clearance rules enabled); schematic-to-PCB comparison reviewed; JLCPCB matched all
   assembled BOM line items and previewed placement.
+- **Firmware bring-up (partial, done on a Nucleo-F446RE):** builds clean (zero warnings); flashed over
+  ST-LINK/SWD; the application loop, USART2 telemetry at 115200, and error-handling paths are confirmed
+  running (with no peripherals attached, the board streams the expected `ReadAccel fail / ReadGyro fail
+  / Clear failed` sequence). Success paths (live IMU/OLED/flash) still pending the wired-up modules.
 - **Hardware verification (pending):** power-rail, short-circuit, SWD, USB-UART, I²C, SPI, and
   firmware bring-up will be recorded after fabrication — planned under `docs/verification/` (logic-
   analyzer captures, measured I²C rise time vs. the calculated limit, SPI mode/clock, flash
@@ -161,8 +172,9 @@ normalized (some unconventional refs — `S`/`M`/`B`/`C` — and `U?` placeholde
 top render) and will be cleaned up before fabrication.
 
 **Firmware (open items before it can be called validated):**
-- The application loop (sample → OLED → UART → flash log) is written but has **not been compiled or
-  run on hardware** — bring-up and on-target debugging are still pending.
+- The application loop builds clean and runs on a Nucleo-F446RE (loop, UART telemetry, and error paths
+  confirmed). The **success paths are not yet validated** — no peripherals were attached, so live IMU
+  reads, OLED rendering, and flash read/write/erase remain to be exercised with the modules wired up.
 - `SystemClock_Config()` currently runs the core from the **16 MHz HSI with no PLL**, not the 180 MHz
   the dev log mentions; the PLL config needs to be added.
 - **PA4 chip-select conflict:** the SPI1 MSP configures PA4 as `GPIO_AF5_SPI1` (hardware NSS) after
@@ -204,6 +216,14 @@ MIT — see [`LICENSE`](LICENSE). Covers the authored firmware drivers and hardw
 STM32 HAL/CMSIS retain their original STMicroelectronics licenses.
 
 ## Changelog
+
+### 2026-07-24 — Firmware bring-up on Nucleo-F446RE
+
+First on-hardware run. Built the firmware clean (zero warnings, ~15.8 KB) with the GNU ARM toolchain
+and flashed it to a Nucleo-F446RE over ST-LINK/SWD. With no peripherals attached, the board streams the
+expected `ReadAccel fail / ReadGyro fail / Clear failed` sequence over USART2 at 115200 — confirming the
+main loop, UART telemetry, and error-handling paths run correctly on hardware. Success paths (live IMU,
+OLED, flash) remain to be validated with the breakout modules wired up.
 
 ### 2026-07-23 — Firmware: end-to-end data-logging loop
 
